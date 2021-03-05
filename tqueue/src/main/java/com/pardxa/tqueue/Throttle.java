@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class Throttle {
@@ -25,9 +26,9 @@ public class Throttle {
         int outputPriority = -1;
         while (itr.hasNext()) {
             outputPriority = itr.next();
-            if (!isFullBucket(outputPriority)) {
-                outputPriority = findFullBucket(outputPriority, keySet);
-                addToBucket(outputPriority);
+            if (!hasFullBucket(outputPriority)) {
+                outputPriority = checkItemNextToFullBucket(outputPriority, keySet);
+                incrementToBucket(outputPriority);
                 clearPrevBucket(outputPriority);
                 return outputPriority;
             }
@@ -35,14 +36,38 @@ public class Throttle {
         return outputPriority;
     }
 
-    private boolean isFullBucket(int priority) {
-        Integer count = buckets.get(priority);
-        if (count == null)
-            return false;
-        return (count + 1 > throttleRate);
+    /**
+     * check if there is a full bucket and return next item behind full bucket or
+     * return origin item if there has no full bucket
+     * 
+     * @param priority
+     * @param originalKeySet
+     * @return
+     */
+    private int checkItemNextToFullBucket(int priority, Set<Integer> originalKeySet) {
+        if (buckets.isEmpty()) {
+            return priority;
+        }
+        LinkedList<Integer> bucketList = new LinkedList<>(buckets.keySet());
+        Collections.sort(bucketList);
+        if (bucketList.peekLast() == priority || !buckets.keySet().contains(priority)) {
+            return priority;
+        }
+        Optional<Integer> opFirstFullBucket = bucketList.stream()
+                .filter(item -> (item > priority && hasFullBucket(item))).findFirst();
+        if (!opFirstFullBucket.isPresent()) {
+            return priority;
+        }
+        int firstFullBucket = opFirstFullBucket.get();
+        return ListHelper.findNextItem(originalKeySet, firstFullBucket);
     }
 
-    private void addToBucket(int priority) {
+    private boolean hasFullBucket(int priority) {
+        Integer count = buckets.get(priority);
+        return (count != null) ? (count + 1 > throttleRate) : false;
+    }
+
+    private void incrementToBucket(int priority) {
         Set<Integer> keySet = buckets.keySet();
         int count = 0;
         if (keySet.contains(priority)) {
@@ -52,50 +77,10 @@ public class Throttle {
     }
 
     private void clearPrevBucket(int priority) {
-        Set<Integer> keySet = buckets.keySet();
-        List<Integer> list = new ArrayList<>(keySet);
-        Collections.sort(list);
-        for (int i = 0; i < list.size(); i++) {
-            if (priority == list.get(i) && i > 0) {
-                buckets.put(list.get(i - 1), 0);
-            }
+        Integer prevPriority = ListHelper.findPrevItem(buckets.keySet(), priority);
+        if (hasFullBucket(prevPriority) && prevPriority != priority) {
+            buckets.put(prevPriority, 0);
         }
     }
 
-    private int findFullBucket(int priority, Set<Integer> originalKeySet) {
-        int outputPriority = priority;
-        if (buckets.size() > 0) {
-            LinkedList<Integer> bucketList = new LinkedList<>(buckets.keySet());
-            Collections.sort(bucketList);
-            if (bucketList.peekLast() != priority && buckets.keySet().contains(priority)) {
-                for (int idx = bucketList.indexOf(priority) + 1; idx < bucketList.size(); idx++) {
-                    int fullBucketkey = bucketList.get(idx);
-                    if (isFullBucket(fullBucketkey)) {
-                        outputPriority = findNext(originalKeySet, fullBucketkey);
-                        if (outputPriority < 0) {
-                            outputPriority = fullBucketkey;
-                        }
-                    }
-                }
-            }
-        }
-        return outputPriority;
-    }
-
-    private int findNext(Set<Integer> originalKeySet, int fullBucketkey) {
-        List<Integer> originalList = new ArrayList<>(originalKeySet);
-        Collections.sort(originalList);
-        if (!originalKeySet.contains(fullBucketkey)) {
-            for (int originalKey : originalList) {
-                if (originalKey > fullBucketkey) {
-                    return originalKey;
-                }
-            }
-        }
-        int index = originalList.indexOf(fullBucketkey);
-        if (index + 1 == originalList.size()) {
-            return originalList.get(index);
-        }
-        return originalList.get(index + 1);
-    }
 }

@@ -155,4 +155,17 @@ class AppTest {
         assertEquals(Integer.valueOf(84), queue.dequeue());
         assertEquals(Integer.valueOf(85), queue.dequeue());
     }
+
+    @Test
+    void testExample5() throws InterruptedException {
+        Tqueue<Integer> queue = new Tqueue<>(4, 2);
+        queue.enqueue(Integer.valueOf(4), 4);
+        queue.enqueue(Integer.valueOf(3), 3);
+        queue.enqueue(Integer.valueOf(2), 2);
+        queue.enqueue(Integer.valueOf(1), 1);
+        assertEquals(Integer.valueOf(1), queue.dequeue());
+        assertEquals(Integer.valueOf(2), queue.dequeue());
+        assertEquals(Integer.valueOf(3), queue.dequeue());
+        assertEquals(Integer.valueOf(4), queue.dequeue());
+    }
 }
