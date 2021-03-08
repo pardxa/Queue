@@ -11,12 +11,12 @@ public class Tqueue<T> {
     private final Lock lock = new ReentrantLock();
     private final Condition isEmpty = lock.newCondition();
     private final Condition isFull = lock.newCondition();
-    private int capicity;
+    private int capacity;
     private Map<Integer, LinkedList<T>> items;
     private Throttle tr;
 
-    public Tqueue(int capicity, int throttleRate) {
-        this.capicity = capicity;
+    public Tqueue(int capacity, int throttleRate) {
+        this.capacity = capacity;
         items = new HashMap<>();
         tr = new Throttle(throttleRate);
     }
@@ -24,7 +24,7 @@ public class Tqueue<T> {
     public void enqueue(T item, int priority) throws InterruptedException {
         lock.lock();
         try {
-            while (size() + 1 > capicity) {
+            while (size() + 1 > capacity) {
                 isFull.await();
             }
             if (!items.keySet().contains(priority)) {
@@ -48,7 +48,7 @@ public class Tqueue<T> {
             if (items.get(currentPriority).isEmpty()) {
                 items.remove(currentPriority);
             }
-            if (size() < capicity) {
+            if (size() < capacity) {
                 isFull.signalAll();
             }
             return item;

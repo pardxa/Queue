@@ -28,11 +28,11 @@ public class Throttle {
             outputPriority = itr.next();
             if (!hasFullBucket(outputPriority)) {
                 outputPriority = checkItemNextToFullBucket(outputPriority, keySet);
-                incrementToBucket(outputPriority);
-                clearPrevBucket(outputPriority);
-                return outputPriority;
+                break;
             }
         }
+        incrementToBucket(outputPriority);
+        clearPrevBucket(outputPriority,keySet);
         return outputPriority;
     }
 
@@ -76,10 +76,14 @@ public class Throttle {
         buckets.put(priority, (count % throttleRate) + 1);
     }
 
-    private void clearPrevBucket(int priority) {
+    private void clearPrevBucket(int priority,Set<Integer> originalKeySet) {
         Integer prevPriority = ListHelper.findPrevItem(buckets.keySet(), priority);
         if (hasFullBucket(prevPriority) && prevPriority != priority) {
-            buckets.put(prevPriority, 0);
+            if(originalKeySet.contains(priority)){
+                buckets.put(prevPriority, 0);
+            }else{
+                buckets.remove(prevPriority); 
+            }
         }
     }
 
